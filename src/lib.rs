@@ -247,14 +247,14 @@ impl<const N: usize, T: Bitset> Bitset for Bitvec<N, T> {
     }
 
     fn set(&mut self, field: usize, flag: bool) {
-        let q = field / N;
-        let r = field % N;
+        let q = field / T::length();
+        let r = field % T::length();
         self.bitsets[q].set(r, flag);
     }
 
     fn get(&self, field: usize) -> bool {
-        let q = field / N;
-        let r = field % N;
+        let q = field / T::length();
+        let r = field % T::length();
         self.bitsets[q].get(r)
     }
 
