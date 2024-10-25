@@ -1,7 +1,6 @@
 use std::{
     array::from_fn,
     fmt::{Binary, Debug},
-    mem::size_of,
 };
 
 pub trait Bitset: Copy {
@@ -30,6 +29,7 @@ pub trait Bitset: Copy {
     // Getter + Setter
     fn get(&self, field: usize) -> bool;
     fn set(&mut self, field: usize, flag: bool);
+    fn length() -> usize;
 }
 
 impl Bitset for u64 {
@@ -116,20 +116,20 @@ impl Bitset for u64 {
             *self &= !(1 << field);
         }
     }
+
+    fn length() -> usize {
+        64
+    }
 }
 
 #[derive(Clone, Copy)]
 pub struct Bitvec<const N: usize, T: Bitset> {
     bitsets: [T; N],
-    t_bits: usize,
 }
 
 impl<const N: usize, T: Bitset> Bitvec<N, T> {
     fn new(bitsets: [T; N]) -> Bitvec<N, T> {
-        Bitvec {
-            bitsets,
-            t_bits: (size_of::<T>() * 8),
-        }
+        Bitvec { bitsets }
     }
 }
 
@@ -197,8 +197,8 @@ impl<const N: usize, T: Bitset> Bitset for Bitvec<N, T> {
     }
 
     fn shift_left_mut(&mut self, amount: usize) {
-        let q = amount / self.t_bits;
-        let r = amount % self.t_bits;
+        let q = amount / T::length();
+        let r = amount % T::length();
         for idx in (0..N).rev() {
             self.bitsets[idx] = if q > idx {
                 T::zeroes()
@@ -207,14 +207,14 @@ impl<const N: usize, T: Bitset> Bitset for Bitvec<N, T> {
             } else {
                 self.bitsets[idx - q]
                     .shift_right(r)
-                    .or(self.bitsets[idx - q - 1].shift_left(self.t_bits - r))
+                    .or(self.bitsets[idx - q - 1].shift_left(T::length() - r))
             };
         }
     }
 
     fn shift_right_mut(&mut self, amount: usize) {
-        let q = amount / self.t_bits;
-        let r = amount % self.t_bits;
+        let q = amount / T::length();
+        let r = amount % T::length();
         for idx in 0..N {
             self.bitsets[idx] = if N <= idx + q {
                 T::zeroes()
@@ -223,7 +223,7 @@ impl<const N: usize, T: Bitset> Bitset for Bitvec<N, T> {
             } else {
                 self.bitsets[idx + q]
                     .shift_left(r)
-                    .or(self.bitsets[idx + q + 1].shift_right(self.t_bits - r))
+                    .or(self.bitsets[idx + q + 1].shift_right(T::length() - r))
             };
         }
     }
@@ -256,6 +256,10 @@ impl<const N: usize, T: Bitset> Bitset for Bitvec<N, T> {
         let q = field / N;
         let r = field % N;
         self.bitsets[q].get(r)
+    }
+
+    fn length() -> usize {
+        N * T::length()
     }
 }
 
