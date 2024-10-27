@@ -1,5 +1,5 @@
-use bitvector::Bitset;
-use bitvector::Bitvec;
+use bitset_rs::Bitset;
+use bitset_rs::Bitvec;
 
 fn main() {
     let bitv = Bitvec::<2, u64>::ones();

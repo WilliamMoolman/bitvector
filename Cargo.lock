@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "bitvector"
-version = "0.1.1"
+name = "bitset-rs"
+version = "0.1.2"

@@ -1,266 +1,78 @@
-use std::{
-    array::from_fn,
-    fmt::{Binary, Debug},
-};
+mod bitset;
+mod bitvec;
 
-pub trait Bitset: Copy {
-    // Constructors
-    fn ones() -> Self;
-    fn zeroes() -> Self;
+pub use bitset::*;
+pub use bitvec::*;
 
-    // Immutable operations
-    fn and(&self, other: Self) -> Self;
-    fn nand(&self, other: Self) -> Self;
-    fn shift_left(&self, amount: usize) -> Self;
-    fn shift_right(&self, amount: usize) -> Self;
-    fn or(&self, other: Self) -> Self;
-    fn not(&self) -> Self;
-    fn nor(&self, other: Self) -> Self;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // In place operations
-    fn and_mut(&mut self, other: &Self);
-    fn nand_mut(&mut self, other: &Self);
-    fn shift_left_mut(&mut self, amount: usize);
-    fn shift_right_mut(&mut self, amount: usize);
-    fn or_mut(&mut self, other: &Self);
-    fn not_mut(&mut self);
-    fn nor_mut(&mut self, other: &Self);
-
-    // Getter + Setter
-    fn get(&self, field: usize) -> bool;
-    fn set(&mut self, field: usize, flag: bool);
-    fn length() -> usize;
-}
-
-impl Bitset for u64 {
-    fn ones() -> Self {
-        !0u64
+    #[test]
+    fn test_u64_operations() {
+        let op1 = 2456u64;
+        let op2 = !1234u64;
+        assert_eq!(op1.and(op2), op1 & op2);
+        assert_eq!(op1.or(op2), op1 | op2);
+        assert_eq!(op1.xor(op2), op1 ^ op2);
+        assert_eq!(op1.nand(op2), !(op1 & op2));
+        assert_eq!(op1.nor(op2), !(op1 | op2));
+        assert_eq!(op1.not(), !op1);
+        assert_eq!(op1.shift_left(6), op1 << 6);
+        assert_eq!(op1.shift_right(6), op1 >> 6);
     }
 
-    fn zeroes() -> Self {
-        0
+    #[test]
+    fn test_u64_mut_operations() {
+        let mut op1a = 2456u64;
+        let mut op1b = 2456u64;
+        let op2 = !1234u64;
+
+        op1a.and_mut(&op2);
+        op1b &= op2;
+        op1a.or_mut(&op2);
+        op1b |= op2;
+        op1a.xor_mut(&op2);
+        op1b ^= op2;
+        op1a.nand_mut(&op2);
+        op1b = !(op1b & op2);
+        op1a.nor_mut(&op2);
+        op1b = !(op1b | op2);
+        op1a.not_mut();
+        op1b = !op1b;
+        assert_eq!(op1a, op1b);
+        op1a.shift_left_mut(6);
+        op1b <<= 6;
+        assert_eq!(op1a, op1b);
+        op1a.shift_right_mut(10);
+        op1b >>= 10;
+        assert_eq!(op1a, op1b);
     }
 
-    fn and(&self, other: Self) -> Self {
-        self & other
-    }
+    #[test]
+    fn test_bitvec() {
+        let op1 = 2456u32;
+        let op2 = !1234u32;
+        let int1 = (op1 as u64) << 32 | (op2 as u64);
+        let int2 = (op2 as u64) << 32 | (op1 as u64);
+        let bitvec1 = Bitvec::<2, u32>::new([op2, op1]);
+        let bitvec2 = Bitvec::<2, u32>::new([op1, op2]);
 
-    fn nand(&self, other: Self) -> Self {
-        !(self & other)
-    }
-
-    fn shift_left(&self, amount: usize) -> Self {
-        if amount > 63 {
-            0
-        } else {
-            self << amount
+        fn to_u64(bv: Bitvec<2, u32>) -> u64 {
+            let [a, b] = bv.slice();
+            (*b as u64) << 32 | (*a as u64)
         }
-    }
 
-    fn shift_right(&self, amount: usize) -> Self {
-        if amount > 63 {
-            0
-        } else {
-            self >> amount
-        }
-    }
+        assert_eq!(to_u64(bitvec1.and(bitvec2)), int1.and(int2));
+        assert_eq!(to_u64(bitvec1.or(bitvec2)), int1.or(int2));
+        assert_eq!(to_u64(bitvec1.xor(bitvec2)), int1.xor(int2));
+        assert_eq!(to_u64(bitvec1.nand(bitvec2)), int1.nand(int2));
+        assert_eq!(to_u64(bitvec1.nor(bitvec2)), int1.nor(int2));
 
-    fn or(&self, other: Self) -> Self {
-        self | other
-    }
+        assert_eq!(to_u64(bitvec1.shift_left(5)), int1.shift_left(5));
+        assert_eq!(to_u64(bitvec1.shift_right(6)), int1.shift_right(6));
 
-    fn not(&self) -> Self {
-        !self
-    }
-
-    fn nor(&self, other: Self) -> Self {
-        !(self | other)
-    }
-
-    fn and_mut(&mut self, other: &Self) {
-        *self &= other;
-    }
-
-    fn nand_mut(&mut self, other: &Self) {
-        *self = !(*self & *other);
-    }
-
-    fn shift_left_mut(&mut self, amount: usize) {
-        *self = if amount > 63 { 0 } else { *self << amount };
-    }
-
-    fn shift_right_mut(&mut self, amount: usize) {
-        *self = if amount > 63 { 0 } else { *self >> amount };
-    }
-
-    fn or_mut(&mut self, other: &Self) {
-        *self |= *other;
-    }
-
-    fn not_mut(&mut self) {
-        *self = !*self;
-    }
-
-    fn nor_mut(&mut self, other: &Self) {
-        *self = !(*self | *other);
-    }
-
-    fn get(&self, field: usize) -> bool {
-        (self >> field) & 1 != 0
-    }
-
-    fn set(&mut self, field: usize, flag: bool) {
-        if flag {
-            *self |= 1 << field;
-        } else {
-            *self &= !(1 << field);
-        }
-    }
-
-    fn length() -> usize {
-        64
+        assert_eq!(to_u64(bitvec2.shift_left(5)), int2.shift_left(5));
+        assert_eq!(to_u64(bitvec2.shift_right(6)), int2.shift_right(6));
     }
 }
-
-#[derive(Clone, Copy)]
-pub struct Bitvec<const N: usize, T: Bitset> {
-    bitsets: [T; N],
-}
-
-impl<const N: usize, T: Bitset> Bitvec<N, T> {
-    fn new(bitsets: [T; N]) -> Bitvec<N, T> {
-        Bitvec { bitsets }
-    }
-}
-
-impl<const N: usize, T: Bitset + Binary> Debug for Bitvec<N, T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "bitvector[ ")?;
-        for i in 0..N {
-            write!(f, "{:0>64b} ", self.bitsets[i])?;
-        }
-        write!(f, "]")
-    }
-}
-
-impl<const N: usize, T: Bitset> Bitset for Bitvec<N, T> {
-    fn ones() -> Self {
-        Bitvec::new([T::ones(); N])
-    }
-
-    fn zeroes() -> Self {
-        Bitvec::new([T::zeroes(); N])
-    }
-
-    fn and(&self, other: Self) -> Self {
-        Bitvec::new(from_fn(|i| self.bitsets[i].and(other.bitsets[i])))
-    }
-
-    fn nand(&self, other: Self) -> Self {
-        Bitvec::new(from_fn(|i| self.bitsets[i].nand(other.bitsets[i])))
-    }
-
-    fn shift_left(&self, amount: usize) -> Self {
-        let mut clone = self.clone();
-        clone.shift_left_mut(amount);
-        return clone;
-    }
-
-    fn shift_right(&self, amount: usize) -> Self {
-        let mut clone = self.clone();
-        clone.shift_right_mut(amount);
-        return clone;
-    }
-
-    fn or(&self, other: Self) -> Self {
-        Bitvec::new(from_fn(|i| self.bitsets[i].or(other.bitsets[i])))
-    }
-
-    fn not(&self) -> Self {
-        Bitvec::new(from_fn(|i| self.bitsets[i].not()))
-    }
-
-    fn nor(&self, other: Self) -> Self {
-        Bitvec::new(from_fn(|i| self.bitsets[i].nor(other.bitsets[i])))
-    }
-
-    fn and_mut(&mut self, other: &Self) {
-        for i in 0..N {
-            self.bitsets[i].and_mut(&other.bitsets[i]);
-        }
-    }
-
-    fn nand_mut(&mut self, other: &Self) {
-        for i in 0..N {
-            self.bitsets[i].nand_mut(&other.bitsets[i]);
-        }
-    }
-
-    fn shift_left_mut(&mut self, amount: usize) {
-        let q = amount / T::length();
-        let r = amount % T::length();
-        for idx in (0..N).rev() {
-            self.bitsets[idx] = if q > idx {
-                T::zeroes()
-            } else if idx - q == 0 {
-                self.bitsets[idx - q].shift_right(r)
-            } else {
-                self.bitsets[idx - q]
-                    .shift_right(r)
-                    .or(self.bitsets[idx - q - 1].shift_left(T::length() - r))
-            };
-        }
-    }
-
-    fn shift_right_mut(&mut self, amount: usize) {
-        let q = amount / T::length();
-        let r = amount % T::length();
-        for idx in 0..N {
-            self.bitsets[idx] = if N <= idx + q {
-                T::zeroes()
-            } else if idx + q == N - 1 {
-                self.bitsets[idx + q].shift_left(r)
-            } else {
-                self.bitsets[idx + q]
-                    .shift_left(r)
-                    .or(self.bitsets[idx + q + 1].shift_right(T::length() - r))
-            };
-        }
-    }
-
-    fn or_mut(&mut self, other: &Self) {
-        for i in 0..N {
-            self.bitsets[i].or_mut(&other.bitsets[i]);
-        }
-    }
-
-    fn not_mut(&mut self) {
-        for i in 0..N {
-            self.bitsets[i].not_mut();
-        }
-    }
-
-    fn nor_mut(&mut self, other: &Self) {
-        for i in 0..N {
-            self.bitsets[i].nor_mut(&other.bitsets[i]);
-        }
-    }
-
-    fn set(&mut self, field: usize, flag: bool) {
-        let q = field / T::length();
-        let r = field % T::length();
-        self.bitsets[q].set(r, flag);
-    }
-
-    fn get(&self, field: usize) -> bool {
-        let q = field / T::length();
-        let r = field % T::length();
-        self.bitsets[q].get(r)
-    }
-
-    fn length() -> usize {
-        N * T::length()
-    }
-}
-
-pub type Bitvec512 = Bitvec<8, u64>;
