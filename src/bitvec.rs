@@ -5,6 +5,16 @@ use std::{
 
 use crate::bitset::Bitset;
 
+/// Larger datastructure for variable bitwidths that implements Bitset trait.
+///
+/// The underlying implementation is a slice of length N of a generic object with type T that implements the Bitset trait, where on most systems a u64 would be the most efficient choice.
+/// The granularity is bounded to the length of T, with future releases intending to introduce a constructor arg to artificially limit it.
+///
+/// # Examples
+/// Immutable Implementations
+/// ```rust
+///
+/// ```
 #[derive(Clone, Copy)]
 pub struct Bitvec<const N: usize, T: Bitset> {
     bitsets: [T; N],

@@ -1,3 +1,29 @@
+/// Trait definition for bitset API. Provides implementation for Rust integer types
+///
+/// The API covers the basic bitwise operations of AND, NAND, SHIFT, OR, XOR, NOT and NOR, both with mutable and immutable operations. It further allows bitlevel field access and setting.
+///
+/// # Example
+/// Immutable operations:
+/// ```rust
+/// use bitset_rs::Bitset;
+///
+/// let var1 = 1u64;
+/// let var2 = 0u64;
+/// assert_eq!(var1.and(var2), 0u64);
+/// assert_eq!(var1.or(var2), 1u64);
+/// assert_eq!(var2.not(), !0u64);
+/// ```
+/// Mutable operations:
+/// ```rust
+/// use bitset_rs::Bitset;
+///
+/// let mut var1 = 1u64;
+/// let var2 = 0u64;
+/// var1.or_mut(&var2);
+/// assert_eq!(var1, 1u64);
+/// var1.shift_left_mut(2usize);
+/// assert_eq!(var1, 4u64);
+/// ```
 pub trait Bitset: Copy {
     // Constructors
     fn ones() -> Self;

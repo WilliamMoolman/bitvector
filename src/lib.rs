@@ -1,3 +1,7 @@
+//! A simple and somewhat efficient bitset library, focused on competitive programming.
+//!
+//! Existing libraries such as bitset, bitset-simd and bitvec are all much better libraries for robust bitoperations and provide further abstractions such as streams and specific memory management. However due to a lack of support for shifting operations (why??) this library was developed.
+
 mod bitset;
 mod bitvec;
 
